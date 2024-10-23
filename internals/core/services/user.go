@@ -29,7 +29,7 @@ func NewUserService(logger port.Logger, userRepo port.UserRepository, cache port
 func (s *UserService) GetUserByID(id uint) (*model.User, error) {
 	user, err := s.userRepo.FindByID(id)
 	if err != nil {
-		s.logger.Error("Error finding user by ID", err)
+		s.logger.Error("error finding user by ID", err)
 		return nil, err
 	}
 	return user, nil
@@ -39,7 +39,7 @@ func (s *UserService) GetUserByID(id uint) (*model.User, error) {
 func (s *UserService) GetUsers() ([]model.User, error) {
 	users, err := s.userRepo.FindAll()
 	if err != nil {
-		s.logger.Error("Error finding all users", err)
+		s.logger.Error("error finding all users", err)
 		return nil, err
 	}
 	return users, nil
@@ -52,15 +52,15 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 
 		err := json.Unmarshal(msg.Value, &user)
 		if err != nil {
-			s.logger.Error("Failed to unmarshal user", err)
+			s.logger.Error("failed to unmarshal user", err)
 			return err
 		}
 
 		if err := s.userRepo.Create(&user); err != nil {
-			s.logger.Error("Failed to store user in PostgreSQL", err)
+			s.logger.Error("failed to store user in PostgreSQL", err)
 			return err
 		}
-		s.logger.Info("User stored in PostgreSQL", user.ID)
+		s.logger.Info("user stored in PostgreSQL", user.ID)
 
 		userKey := "user:" + string(rune(user.ID))
 		userData, err := json.Marshal(user)
@@ -71,14 +71,14 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 
 		err = s.cache.Set(ctx, userKey, userData, 3600)
 		if err != nil {
-			s.logger.Error("Failed to store user in Redis", err)
+			s.logger.Error("failed to store user in Redis", err)
 			return err
 		}
-		s.logger.Info("User cached in Redis", user.ID)
+		s.logger.Info("user cached in Redis", user.ID)
 
 		err = msg.AckFunc()
 		if err != nil {
-			s.logger.Error("Failed to acknowledge RabbitMQ message", err)
+			s.logger.Error("failed to acknowledge RabbitMQ message", err)
 			return err
 		}
 
@@ -86,6 +86,6 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 	}
 
 	if err := s.messaging.Consume(handler); err != nil {
-		s.logger.Error("Failed to start consuming RabbitMQ messages", err)
+		s.logger.Error("failed to start consuming RabbitMQ messages", err)
 	}
 }

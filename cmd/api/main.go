@@ -28,7 +28,7 @@ func StartAPIServer() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Println("Error loading .env file, using default values")
+		log.Println("error loading .env file, using default values")
 	}
 
 	port := os.Getenv("PORT")
@@ -38,7 +38,7 @@ func StartAPIServer() {
 
 	zapLogger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatal("Error initializing zap logger")
+		log.Fatal("error initializing zap logger")
 	}
 	defer zapLogger.Sync()
 	loggerAdapter := logger.NewZapAdapter(zapLogger)
@@ -49,11 +49,11 @@ func StartAPIServer() {
 	}
 	db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{})
 	if err != nil {
-		log.Fatalf("Failed to connect to the database: %v", err)
+		log.Fatalf("failed to connect to the database: %v", err)
 	}
 
 	if err := db.AutoMigrate(&model.User{}); err != nil {
-		log.Fatalf("Failed to migrate the database: %v", err)
+		log.Fatalf("failed to migrate the database: %v", err)
 	}
 
 	redisAddr := os.Getenv("REDIS_ADDR")
@@ -71,7 +71,7 @@ func StartAPIServer() {
 	}
 	rabbitMqAdapter, err := rabbitmq.NewRabbitMQAdapter(rabbitMQURL, rabbitMQQueue)
 	if err != nil {
-		log.Fatalf("Failed to initialize RabbitMQ: %v", err)
+		log.Fatalf("failed to initialize RabbitMQ: %v", err)
 	}
 	defer rabbitMqAdapter.Close()
 
@@ -91,21 +91,21 @@ func StartAPIServer() {
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 
 	go func() {
-		log.Printf("Starting API server on port %s", port)
+		log.Printf("starting API server on port %s", port)
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-			log.Fatalf("Could not listen on :%s: %v", port, err)
+			log.Fatalf("could not listen on :%s: %v", port, err)
 		}
 	}()
 
 	<-ch
-	log.Println("Shutting down server...")
+	log.Println("shutting down server...")
 
 	ctxShutdown, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctxShutdown); err != nil {
-		log.Fatalf("Server forced to shutdown: %v", err)
+		log.Fatalf("server forced to shutdown: %v", err)
 	}
 
-	log.Println("Server exiting")
+	log.Println("server exiting")
 }

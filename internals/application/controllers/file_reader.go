@@ -30,7 +30,7 @@ func (f *FileReaderController) ReadFile(ctx context.Context) error {
 
 	err := svc.ReadFile()
 	if err != nil {
-		f.logger.Error("Error reading file", err)
+		f.logger.Error("error reading file", err)
 		return err
 	}
 

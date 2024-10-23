@@ -31,7 +31,7 @@ func (f *FileReaderService) ReadFile() error {
 
 	file, err := os.Open(f.filepath)
 	if err != nil {
-		f.logger.Error("Error opening file", err)
+		f.logger.Error("error opening file", err)
 		return err
 	}
 	defer file.Close()
@@ -39,7 +39,7 @@ func (f *FileReaderService) ReadFile() error {
 	reader := csv.NewReader(bufio.NewReader(file))
 
 	if _, err := reader.Read(); err != nil {
-		f.logger.Error("Error reading file", err)
+		f.logger.Error("error reading file", err)
 		return err
 	}
 
@@ -49,7 +49,7 @@ func (f *FileReaderService) ReadFile() error {
 			if err.Error() == "EOF" {
 				break
 			}
-			f.logger.Error("Error reading file", err)
+			f.logger.Error("error reading file", err)
 			return err
 		}
 
@@ -70,16 +70,16 @@ func (f *FileReaderService) ReadFile() error {
 
 		userBytes, err := json.Marshal(user)
 		if err != nil {
-			f.logger.Error("Error marshalling user", err)
+			f.logger.Error("error marshalling user", err)
 			return err
 		}
 
-		f.logger.Info("Sending user to queue", user.ID)
+		f.logger.Info("sending user to queue", user.ID)
 		err = f.messaging.Write(port.Message{
 			Value: userBytes,
 		})
 		if err != nil {
-			f.logger.Error("Error writing message to queue", err)
+			f.logger.Error("error writing message to queue", err)
 			return err
 		}
 	}
