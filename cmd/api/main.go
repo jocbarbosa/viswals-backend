@@ -24,7 +24,14 @@ import (
 )
 
 func StartAPIServer() {
+
 	ctx := context.Background()
+
+	defer func() {
+		if r := recover(); r != nil {
+			log.Fatalf("Server panicked: %v", r)
+		}
+	}()
 
 	err := godotenv.Load()
 	if err != nil {
