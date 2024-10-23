@@ -15,6 +15,7 @@ type UserService struct {
 	messaging port.Messaging
 }
 
+// NewUserService creates a new UserService
 func NewUserService(logger port.Logger, userRepo port.UserRepository, cache port.Cache, msg port.Messaging) *UserService {
 	return &UserService{
 		logger:    logger,
@@ -24,6 +25,7 @@ func NewUserService(logger port.Logger, userRepo port.UserRepository, cache port
 	}
 }
 
+// GetUserByID returns a user by ID
 func (s *UserService) GetUserByID(id uint) (*model.User, error) {
 	user, err := s.userRepo.FindByID(id)
 	if err != nil {
@@ -33,6 +35,7 @@ func (s *UserService) GetUserByID(id uint) (*model.User, error) {
 	return user, nil
 }
 
+// GetUsers returns all users
 func (s *UserService) GetUsers() ([]model.User, error) {
 	users, err := s.userRepo.FindAll()
 	if err != nil {
@@ -42,6 +45,7 @@ func (s *UserService) GetUsers() ([]model.User, error) {
 	return users, nil
 }
 
+// StartConsuming starts consuming messages from messaging source
 func (s *UserService) StartConsuming(ctx context.Context) {
 	handler := func(msg port.Message) error {
 		var user model.User
