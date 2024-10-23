@@ -4,3 +4,4 @@ vendor/
 
 *.cover
 go.work
+.env
