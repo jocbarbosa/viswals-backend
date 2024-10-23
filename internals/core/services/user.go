@@ -3,6 +3,7 @@ package services
 import (
 	"context"
 	"encoding/json"
+	"strconv"
 
 	"github.com/jocbarbosa/viswals-backend/internals/core/model"
 	"github.com/jocbarbosa/viswals-backend/internals/core/port"
@@ -56,36 +57,39 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 			return err
 		}
 
-		if err := s.userRepo.Create(&user); err != nil {
-			s.logger.Error("failed to store user in PostgreSQL", err)
+		err = s.userRepo.Create(&user)
+		if err != nil {
+			s.logger.Error("failed to store user repository", err)
 			return err
 		}
-		s.logger.Info("user stored in PostgreSQL", user.ID)
+		s.logger.Info("user stored in user repository", user.ID)
 
-		userKey := "user:" + string(rune(user.ID))
+		userKey := "user:" + strconv.Itoa(user.ID)
+
 		userData, err := json.Marshal(user)
 		if err != nil {
-			s.logger.Error("Failed to marshal user for Redis", err)
+			s.logger.Error("failed to marshal user for Redis", err)
 			return err
 		}
 
-		err = s.cache.Set(ctx, userKey, userData, 3600)
+		err = s.cache.Set(ctx, userKey, userData, 3600) // keep for 1 hour
 		if err != nil {
 			s.logger.Error("failed to store user in Redis", err)
 			return err
 		}
-		s.logger.Info("user cached in Redis", user.ID)
+		s.logger.Info("user cached with success", user.ID)
 
 		err = msg.AckFunc()
 		if err != nil {
-			s.logger.Error("failed to acknowledge RabbitMQ message", err)
+			s.logger.Error("failed to acknowledge message", err)
 			return err
 		}
 
 		return nil
 	}
 
-	if err := s.messaging.Consume(handler); err != nil {
-		s.logger.Error("failed to start consuming RabbitMQ messages", err)
+	err := s.messaging.Consume(handler)
+	if err != nil {
+		s.logger.Error("failed to start consuming messages", err)
 	}
 }
