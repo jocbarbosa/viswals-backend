@@ -15,10 +15,13 @@ type RedisClient struct {
 // NewRedisClient creates a new Redis adapter
 func NewRedisClient(addr string, password string, db int) *RedisClient {
 	rdb := redis.NewClient(&redis.Options{
-		Addr:     addr,
-		Password: password,
-		DB:       db,
+		Addr: addr,
+		DB:   db,
 	})
+
+	if password != "" {
+		rdb.Options().Password = password
+	}
 
 	return &RedisClient{client: rdb}
 }
