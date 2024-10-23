@@ -20,6 +20,7 @@ func NewRabbitMQAdapter(url, queueName string) (*RabbitMQAdapter, error) {
 
 	ch, err := conn.Channel()
 	if err != nil {
+		conn.Close()
 		return nil, err
 	}
 
