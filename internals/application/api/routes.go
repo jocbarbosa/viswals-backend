@@ -1,15 +1,16 @@
 package api
 
 import (
-	"github.com/go-chi/chi/v5"
+	"net/http"
+
 	"github.com/jocbarbosa/viswals-backend/internals/application/controllers"
 )
 
 // NewRouter sets up the API routes using chi
-func NewRouter(userController *controllers.UserController) *chi.Mux {
-	r := chi.NewRouter()
+func NewRouter(userController *controllers.UserController) *http.ServeMux {
+	mux := http.NewServeMux()
 
-	r.Get("/users", userController.GetUsers)
+	mux.HandleFunc("/users", userController.GetUsers)
 
-	return r
+	return mux
 }
