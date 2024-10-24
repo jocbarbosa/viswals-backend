@@ -1,39 +1,41 @@
 package rabbitmq
 
 import (
+	"fmt"
+
 	"github.com/jocbarbosa/viswals-backend/internals/core/port"
 	"github.com/streadway/amqp"
 )
 
+// RabbitMQAdapter implements the Messaging interface for RabbitMQ
 type RabbitMQAdapter struct {
 	connection *amqp.Connection
 	channel    *amqp.Channel
 	queueName  string
 }
 
-// NewRabbitMQAdapter creates a new instance of RabbitMQAdapter
-func NewRabbitMQAdapter(url, queueName string) (*RabbitMQAdapter, error) {
-	conn, err := amqp.Dial(url)
+// NewRabbitMQAdapter creates a new RabbitMQ adapter
+func NewRabbitMQAdapter(connURL string, queueName string) (*RabbitMQAdapter, error) {
+	conn, err := amqp.Dial(connURL)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to connect to RabbitMQ: %w", err)
 	}
 
 	ch, err := conn.Channel()
 	if err != nil {
-		conn.Close()
-		return nil, err
+		return nil, fmt.Errorf("failed to open channel: %w", err)
 	}
 
 	_, err = ch.QueueDeclare(
 		queueName,
-		true,
+		false,
 		false,
 		false,
 		false,
 		nil,
 	)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to declare queue: %w", err)
 	}
 
 	return &RabbitMQAdapter{
@@ -43,7 +45,7 @@ func NewRabbitMQAdapter(url, queueName string) (*RabbitMQAdapter, error) {
 	}, nil
 }
 
-// Write sends a message to RabbitMQ
+// Write publishes a message to RabbitMQ
 func (r *RabbitMQAdapter) Write(msg port.Message) error {
 	err := r.channel.Publish(
 		"",
@@ -63,7 +65,7 @@ func (r *RabbitMQAdapter) Write(msg port.Message) error {
 	return nil
 }
 
-// Consume sets up a consumer to handle messages asynchronously
+// Consume starts consuming messages from the queue and calls the provided handler
 func (r *RabbitMQAdapter) Consume(handler port.MessageHandler) error {
 	msgs, err := r.channel.Consume(
 		r.queueName,
@@ -75,28 +77,25 @@ func (r *RabbitMQAdapter) Consume(handler port.MessageHandler) error {
 		nil,
 	)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to consume messages: %w", err)
 	}
 
 	go func() {
 		for d := range msgs {
-			message := port.Message{
-				Value:     d.Body,
-				Headers:   r.convertAmqpHeaders(d.Headers),
-				Timestamp: d.Timestamp,
-				AckFunc: func() error {
-					return d.Ack(false)
-				},
-				NackFunc: func(requeue bool) error {
-					return d.Nack(false, requeue)
-				},
-			}
+			var msg port.Message
 
-			err := handler(message)
+			msg.Value = d.Body
+			msg.Headers = convertAMQPHeaders(d.Headers)
+			msg.Timestamp = d.Timestamp
+
+			err := handler(msg)
 			if err != nil {
-				_ = message.NackFunc(true)
+				fmt.Println("error processing message:", err)
 			} else {
-				_ = message.AckFunc()
+				err = d.Ack(false)
+				if err != nil {
+					fmt.Println("error acknowledging message:", err)
+				}
 			}
 		}
 	}()
@@ -104,15 +103,14 @@ func (r *RabbitMQAdapter) Consume(handler port.MessageHandler) error {
 	return nil
 }
 
-// Close closes the connection and channel
+// Close closes the connection to RabbitMQ
 func (r *RabbitMQAdapter) Close() error {
-	if err := r.channel.Close(); err != nil {
-		return err
+	if err := r.connection.Close(); err != nil {
+		return fmt.Errorf("failed to close channel: %w", err)
 	}
 	return r.connection.Close()
 }
 
-// convertHeaders converts custom headers to amqp.Table format
 func (r *RabbitMQAdapter) convertHeaders(headers []port.MessageHeader) amqp.Table {
 	table := amqp.Table{}
 	for _, header := range headers {
@@ -121,15 +119,14 @@ func (r *RabbitMQAdapter) convertHeaders(headers []port.MessageHeader) amqp.Tabl
 	return table
 }
 
-func (r *RabbitMQAdapter) convertAmqpHeaders(headers amqp.Table) []port.MessageHeader {
-	var result []port.MessageHeader
+func convertAMQPHeaders(headers amqp.Table) []port.MessageHeader {
+	convertedHeaders := make([]port.MessageHeader, 0, len(headers))
 	for key, value := range headers {
-		if val, ok := value.([]byte); ok {
-			result = append(result, port.MessageHeader{
-				Key:   key,
-				Value: val,
-			})
+		strVal, ok := value.(string)
+		if !ok {
+			continue
 		}
+		convertedHeaders = append(convertedHeaders, port.MessageHeader{Key: key, Value: []byte(strVal)})
 	}
-	return result
+	return convertedHeaders
 }

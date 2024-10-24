@@ -96,10 +96,12 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 		}
 		s.logger.Info("user cached with success ", createdUser.ID)
 
-		err = msg.AckFunc()
-		if err != nil {
-			s.logger.Error("failed to acknowledge message", err)
-			return err
+		if msg.AckFunc != nil {
+			err = msg.AckFunc()
+			if err != nil {
+				s.logger.Error("failed to acknowledge message", err)
+				return err
+			}
 		}
 
 		return nil
