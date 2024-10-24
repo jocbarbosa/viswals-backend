@@ -3,8 +3,9 @@ package services
 import (
 	"context"
 	"encoding/json"
-	"strconv"
+	"fmt"
 
+	"github.com/jocbarbosa/viswals-backend/internals/core/dto/filters"
 	"github.com/jocbarbosa/viswals-backend/internals/core/model"
 	"github.com/jocbarbosa/viswals-backend/internals/core/port"
 )
@@ -27,7 +28,7 @@ func NewUserService(logger port.Logger, userRepo port.UserRepository, cache port
 }
 
 // GetUserByID returns a user by ID
-func (s *UserService) GetUserByID(id uint) (*model.User, error) {
+func (s *UserService) GetUserByID(ctx context.Context, id uint) (*model.User, error) {
 	user, err := s.userRepo.FindByID(id)
 	if err != nil {
 		s.logger.Error("error finding user by ID", err)
@@ -37,8 +38,24 @@ func (s *UserService) GetUserByID(id uint) (*model.User, error) {
 }
 
 // GetUsers returns all users
-func (s *UserService) GetUsers() ([]model.User, error) {
-	users, err := s.userRepo.FindAll()
+func (s *UserService) GetUsers(ctx context.Context, filters filters.UserFilter) ([]model.User, error) {
+	if filters.Email != "" {
+		userKey := fmt.Sprintf("user:%s", filters.Email)
+
+		cachedUser, err := s.cache.Get(ctx, userKey)
+		if err == nil && cachedUser != nil {
+			cachedUserStr, ok := cachedUser.(string)
+			if ok {
+				var user model.User
+				if err := json.Unmarshal([]byte(cachedUserStr), &user); err == nil {
+					s.logger.Info("retrieved user from cache", user.Email)
+					return []model.User{user}, nil
+				}
+			}
+		}
+	}
+
+	users, err := s.userRepo.FindAll(filters)
 	if err != nil {
 		s.logger.Error("error finding all users", err)
 		return nil, err
@@ -64,7 +81,7 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 		}
 		s.logger.Info("user stored in user repository", user.ID)
 
-		userKey := "user:" + strconv.Itoa(user.ID)
+		userKey := "user:" + user.Email
 
 		userData, err := json.Marshal(user)
 		if err != nil {

@@ -3,6 +3,7 @@ package repository
 import (
 	"errors"
 
+	"github.com/jocbarbosa/viswals-backend/internals/core/dto/filters"
 	"github.com/jocbarbosa/viswals-backend/internals/core/model"
 	"github.com/jocbarbosa/viswals-backend/internals/core/port"
 	"gorm.io/gorm"
@@ -30,13 +31,26 @@ func (r *GormUserRepository) FindByID(id uint) (*model.User, error) {
 	return &user, nil
 }
 
-// FindAll retrieves all users from repository
-func (r *GormUserRepository) FindAll() ([]model.User, error) {
+// FindAll retrieves all users from repository using filters when available
+func (r *GormUserRepository) FindAll(filters filters.UserFilter) ([]model.User, error) {
 	var users []model.User
-	err := r.db.Find(&users).Error
+	query := r.db.Model(&model.User{})
+
+	if filters.FirstName != "" {
+		query = query.Where("first_name LIKE ?", "%"+filters.FirstName+"%")
+	}
+	if filters.LastName != "" {
+		query = query.Where("last_name LIKE ?", "%"+filters.LastName+"%")
+	}
+	if filters.Email != "" {
+		query = query.Where("email LIKE ?", "%"+filters.Email+"%")
+	}
+
+	err := query.Find(&users).Error
 	if err != nil {
 		return nil, err
 	}
+
 	return users, nil
 }
 

@@ -32,7 +32,7 @@ func (r *RedisClient) Set(ctx context.Context, key string, value interface{}, ex
 }
 
 // Get retrieves a value by key from Redis
-func (r *RedisClient) Get(ctx context.Context, key string) (string, error) {
+func (r *RedisClient) Get(ctx context.Context, key string) (interface{}, error) {
 	result, err := r.client.Get(ctx, key).Result()
 	if err == redis.Nil {
 		return "", nil

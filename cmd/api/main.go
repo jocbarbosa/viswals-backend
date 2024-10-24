@@ -83,10 +83,11 @@ func StartAPIServer() {
 	defer rabbitMqAdapter.Close()
 
 	userRepo := repository.NewUserRepository(db)
-	userController := controllers.NewUserController(userRepo, loggerAdapter, redisAdapter)
 
 	userSvc := services.NewUserService(loggerAdapter, userRepo, redisAdapter, rabbitMqAdapter)
 	go userSvc.StartConsuming(ctx)
+
+	userController := controllers.NewUserController(userSvc, loggerAdapter, redisAdapter)
 
 	router := api.NewRouter(userController)
 	srv := &http.Server{
