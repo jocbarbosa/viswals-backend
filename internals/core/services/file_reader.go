@@ -53,13 +53,11 @@ func (f *FileReaderService) ReadFile() error {
 			return err
 		}
 
-		id, _ := strconv.Atoi(record[0])
 		createdAt, _ := strconv.ParseInt(record[4], 10, 64)
 		mergedAt, _ := strconv.ParseInt(record[6], 10, 64)
 		parentUserID, _ := strconv.Atoi(record[7])
 
 		user := model.User{
-			ID:           id,
 			FirstName:    record[1],
 			LastName:     record[2],
 			Email:        record[3],
@@ -74,7 +72,7 @@ func (f *FileReaderService) ReadFile() error {
 			return err
 		}
 
-		f.logger.Info("sending user to queue", user.ID)
+		f.logger.Info("sending user to queue ", user.Email)
 		err = f.messaging.Write(port.Message{
 			Value: userBytes,
 		})
@@ -82,6 +80,8 @@ func (f *FileReaderService) ReadFile() error {
 			f.logger.Error("error writing message to queue", err)
 			return err
 		}
+
+		f.logger.Info("user sent to queue with success ", user.Email)
 	}
 
 	return nil

@@ -55,8 +55,19 @@ func (r *GormUserRepository) FindAll(filters filters.UserFilter) ([]model.User, 
 }
 
 // Create inserts a new user on repository
-func (r *GormUserRepository) Create(user *model.User) error {
-	return r.db.Create(user).Error
+func (r *GormUserRepository) Create(user *model.User) (*model.User, error) {
+	if err := r.db.Create(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
+// Upsert inserts or updates a user on repository
+func (r *GormUserRepository) Upsert(user *model.User) (*model.User, error) {
+	if err := r.db.Save(user).Error; err != nil {
+		return nil, err
+	}
+	return user, nil
 }
 
 // Update modifies an existing user on repository

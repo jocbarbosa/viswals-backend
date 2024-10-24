@@ -74,12 +74,12 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 			return err
 		}
 
-		err = s.userRepo.Create(&user)
+		createdUser, err := s.userRepo.Upsert(&user)
 		if err != nil {
 			s.logger.Error("failed to store user repository", err)
 			return err
 		}
-		s.logger.Info("user stored in user repository", user.ID)
+		s.logger.Info("user stored in user repository", createdUser.ID)
 
 		userKey := "user:" + user.Email
 
@@ -94,7 +94,7 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 			s.logger.Error("failed to store user in Redis", err)
 			return err
 		}
-		s.logger.Info("user cached with success", user.ID)
+		s.logger.Info("user cached with success ", createdUser.ID)
 
 		err = msg.AckFunc()
 		if err != nil {

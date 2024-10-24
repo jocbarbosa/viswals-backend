@@ -6,7 +6,8 @@ import (
 )
 
 type UserRepository interface {
-	Create(user *model.User) error
+	Create(user *model.User) (*model.User, error)
+	Upsert(user *model.User) (*model.User, error)
 	Update(user *model.User) error
 	FindAll(filters filters.UserFilter) ([]model.User, error)
 	FindByID(id uint) (*model.User, error)
