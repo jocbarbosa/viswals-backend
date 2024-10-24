@@ -1,0 +1,51 @@
+openapi: 3.0.0
+info:
+  title: Viswals API
+  description: Viswals API documentation
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080
+paths:
+  /users:
+    get:
+      summary: Get Users
+      description: Retrieve a list of users with optional filters
+      parameters:
+        - name: first_name
+          in: query
+          description: Filter by first name
+          required: false
+          schema:
+            type: string
+        - name: last_name
+          in: query
+          description: Filter by last name
+          required: false
+          schema:
+            type: string
+        - name: email
+          in: query
+          description: Filter by email
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: A list of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    id:
+                      type: integer
+                    first_name:
+                      type: string
+                    last_name:
+                      type: string
+                    email:
+                      type: string
+        '500':
+          description: Internal server error
