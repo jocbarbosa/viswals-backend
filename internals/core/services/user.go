@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/jocbarbosa/viswals-backend/internals/config"
 	"github.com/jocbarbosa/viswals-backend/internals/core/dto/filters"
 	"github.com/jocbarbosa/viswals-backend/internals/core/model"
 	"github.com/jocbarbosa/viswals-backend/internals/core/port"
+	"github.com/jocbarbosa/viswals-backend/internals/utils"
 )
 
 type UserService struct {
@@ -15,6 +17,7 @@ type UserService struct {
 	userRepo  port.UserRepository
 	cache     port.Cache
 	messaging port.Messaging
+	config    config.Config
 }
 
 // NewUserService creates a new UserService
@@ -24,6 +27,7 @@ func NewUserService(logger port.Logger, userRepo port.UserRepository, cache port
 		userRepo:  userRepo,
 		cache:     cache,
 		messaging: msg,
+		config:    config.NewConfig(),
 	}
 }
 
@@ -34,14 +38,27 @@ func (s *UserService) GetUserByID(ctx context.Context, id uint) (*model.User, er
 		s.logger.Error("error finding user by ID", err)
 		return nil, err
 	}
+
+	user.Email, err = utils.Decrypt(user.Email, s.config.EncryptionKey)
+	if err != nil {
+		s.logger.Error("failed to decrypt user email", err)
+		return nil, err
+	}
+
 	return user, nil
 }
 
 // GetUsers returns all users
 func (s *UserService) GetUsers(ctx context.Context, filters filters.UserFilter) ([]model.User, error) {
 	if filters.Email != "" {
-		userKey := fmt.Sprintf("user:%s", filters.Email)
+		encryptedEmail, err := utils.Encrypt(filters.Email, s.config.EncryptionKey)
+		if err != nil {
+			s.logger.Error("failed to encrypt email filter", err)
+			return nil, err
+		}
+		filters.Email = encryptedEmail
 
+		userKey := fmt.Sprintf("user:%s", encryptedEmail)
 		cachedUser, err := s.cache.Get(ctx, userKey)
 		if err == nil && cachedUser != nil {
 			cachedUserStr, ok := cachedUser.(string)
@@ -60,6 +77,14 @@ func (s *UserService) GetUsers(ctx context.Context, filters filters.UserFilter) 
 		s.logger.Error("error finding all users", err)
 		return nil, err
 	}
+
+	for i := range users {
+		users[i].Email, err = utils.Decrypt(users[i].Email, s.config.EncryptionKey)
+		if err != nil {
+			s.logger.Error("failed to decrypt user email", err)
+		}
+	}
+
 	return users, nil
 }
 
@@ -74,12 +99,18 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 			return err
 		}
 
-		createdUser, err := s.userRepo.Upsert(&user)
+		user.Email, err = utils.Encrypt(user.Email, s.config.EncryptionKey)
 		if err != nil {
-			s.logger.Error("failed to store user repository", err)
+			s.logger.Error("failed to encrypt user email", err)
 			return err
 		}
-		s.logger.Info("user stored in user repository", createdUser.ID)
+
+		createdUser, err := s.userRepo.Upsert(&user)
+		if err != nil {
+			s.logger.Error("failed to store user in repository", err)
+			return err
+		}
+		s.logger.Info("user stored in repository", createdUser.ID)
 
 		userKey := "user:" + user.Email
 
@@ -94,7 +125,7 @@ func (s *UserService) StartConsuming(ctx context.Context) {
 			s.logger.Error("failed to store user in Redis", err)
 			return err
 		}
-		s.logger.Info("user cached with success ", createdUser.ID)
+		s.logger.Info("user cached successfully", createdUser.ID)
 
 		if msg.AckFunc != nil {
 			err = msg.AckFunc()
