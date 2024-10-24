@@ -10,7 +10,7 @@ import (
 
 	adapters "github.com/jocbarbosa/viswals-backend/internals/adapter/logger"
 	rabbitmq "github.com/jocbarbosa/viswals-backend/internals/adapter/messaging/rabbitmq"
-	"github.com/jocbarbosa/viswals-backend/internals/application/controllers"
+	"github.com/jocbarbosa/viswals-backend/internals/core/services"
 )
 
 func StartReader() {
@@ -18,7 +18,7 @@ func StartReader() {
 
 	err := godotenv.Load(".env")
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		log.Fatal("error loading .env file")
 	}
 
 	filepath := os.Getenv("USERS_FILE_PATH")
@@ -28,7 +28,7 @@ func StartReader() {
 
 	zapLogger, err := zap.NewProduction()
 	if err != nil {
-		log.Fatal("Error initializing zap logger")
+		log.Fatal("error initializing zap logger")
 	}
 	defer zapLogger.Sync()
 
@@ -36,24 +36,23 @@ func StartReader() {
 
 	rabbitURL := os.Getenv("RABBITMQ_URL")
 	if rabbitURL == "" {
-		log.Fatal("RabbitMQ URL is not set")
+		log.Fatal("rabbitMQ URL is not set")
 	}
 
 	queueName := os.Getenv("RABBITMQ_QUEUE")
 	if queueName == "" {
-		log.Fatal("RabbitMQ queue is not set")
+		log.Fatal("rabbitMQ queue is not set")
 	}
 
 	messaging, err := rabbitmq.NewRabbitMQAdapter(rabbitURL, queueName)
 	if err != nil {
-		log.Fatal("Error initializing RabbitMQ adapter:", err)
+		log.Fatal("error initializing RabbitMQ adapter:", err)
 	}
 	defer messaging.Close()
 
-	r := controllers.NewFileReader(logger, messaging, filepath)
-
+	r := services.NewFileReader(logger, messaging, filepath)
 	err = r.ReadFile(ctx)
 	if err != nil {
-		logger.Error("Error reading file", err)
+		logger.Error("error reading file", err)
 	}
 }

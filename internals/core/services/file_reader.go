@@ -2,6 +2,7 @@ package services
 
 import (
 	"bufio"
+	"context"
 	"encoding/csv"
 	"encoding/json"
 	"os"
@@ -26,7 +27,7 @@ func NewFileReader(logger port.Logger, m port.Messaging, filepath string) *FileR
 	}
 }
 
-func (f *FileReaderService) ReadFile() error {
+func (f *FileReaderService) ReadFile(ctx context.Context) error {
 	f.logger.Info("Reading file")
 
 	file, err := os.Open(f.filepath)
